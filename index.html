@@ -1,0 +1,351 @@
+<!DOCTYPE HTML>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<title>$1 Recognizer</title>
+	<link href="styles.css" rel="stylesheet" type="text/css" />
+	<!--[if IE]><script src="excanvas.js"></script><![endif]-->
+	<script type="text/javascript" src="js/canvas.js"></script>
+	<script type="text/javascript" src="js/normal.js"></script>
+	<script type="text/javascript" src="js/dollar.js"></script>
+	<script type="text/javascript"><!--
+	    //
+		// Startup
+		//
+		
+		var flip = 0;
+		var iter = 0;
+		var _isDown, _points, _r, _g, _rc;
+		function onLoadEvent()
+		{
+			_points = new Array();
+			_r = new DollarRecognizer();
+
+			var canvas = document.getElementById('myCanvas');
+			_g = canvas.getContext('2d');
+			_g.fillStyle = "rgb(0,0,225)";
+			_g.strokeStyle = "rgb(0,0,225)";
+			_g.lineWidth = 3;
+			_g.font = "16px Gentilis";
+			_rc = getCanvasRect(canvas); // canvas rect on page
+			_g.fillStyle = "rgb(255,255,136)";
+			_g.fillRect(0, 0, _rc.width, 20);
+
+			_isDown = false;
+		}
+		function getCanvasRect(canvas)
+		{
+			var w = canvas.width;
+			var h = canvas.height;
+
+			var cx = canvas.offsetLeft;
+			var cy = canvas.offsetTop;
+			while (canvas.offsetParent != null)
+			{
+				canvas = canvas.offsetParent;
+				cx += canvas.offsetLeft;
+				cy += canvas.offsetTop;
+			}
+			return {x: cx, y: cy, width: w, height: h};
+		}
+		function getScrollY()
+		{
+			var scrollY = 0;
+			if (typeof(document.body.parentElement) != 'undefined')
+			{
+				scrollY = document.body.parentElement.scrollTop; // IE
+			}
+			else if (typeof(window.pageYOffset) != 'undefined')
+			{
+				scrollY = window.pageYOffset; // FF
+			}
+			return scrollY;
+		}
+		//
+		// Mouse Events
+		//
+		function mouseDownEvent(x, y)
+		{
+			document.onselectstart = function() { return false; } // disable drag-select
+			document.onmousedown = function() { return false; } // disable drag-select
+			_isDown = true;
+			x -= _rc.x;
+			y -= _rc.y - getScrollY();
+			if (_points.length > 0)
+				_g.clearRect(0, 0, _rc.width, _rc.height);
+			_points.length = 1; // clear
+			_points[0] = new Point(x, y);
+			//drawText("Recording unistroke...");
+			//_g.fillRect(x - 4, y - 3, 9, 9);
+		}
+		function mouseMoveEvent(x, y)
+		{
+			if (_isDown)
+			{
+				x -= _rc.x;
+				y -= _rc.y - getScrollY();
+				_points[_points.length] = new Point(x, y); // append
+				//console.log("new Point(" + x + "," + y + ")");
+				drawConnectedPoint(_points.length - 2, _points.length - 1);
+			}
+		}
+		function mouseUpEvent(x, y)
+		{
+			document.onselectstart = function() { return true; } // enable drag-select
+			document.onmousedown = function() { return true; } // enable drag-select
+			if (_isDown)
+			{							
+				_isDown = false;
+				if (_points.length >= 10)
+				{
+					var result = _r.Recognize(_points, document.getElementById('useProtractor').checked);
+					//drawText("Result: " + result.Name + " (" + round(result.Score,2) + ").");
+					//console.log("Result" + result.Name);
+					if(result.Name == "horiz-front" || result.Name == "diag-front"){
+						flip += 500;
+					}
+					if(result.Name == "horiz-back" || result.Name == "diag-back"){
+						flip -= 500;
+					}	
+				
+					var c=document.getElementById("myCanvas");
+					var ctx=c.getContext("2d");
+					var img1=document.getElementById("img1");
+					ctx.drawImage(img1,adder(flip,0),0);
+					var img2=document.getElementById("img2");
+					ctx.drawImage(img2,adder(flip,1),0);
+					var img3=document.getElementById("img3");
+					ctx.drawImage(img3,adder(flip,2),0);	
+					var img4=document.getElementById("img4");
+					ctx.drawImage(img4,adder(flip,3),0);	
+					var img5=document.getElementById("img5");
+					ctx.drawImage(img5,adder(flip,4),0);
+					var img6=document.getElementById("img6");
+					ctx.drawImage(img6,adder(flip,5),0);
+					var img7=document.getElementById("img7");
+					ctx.drawImage(img7,adder(flip,6),0);
+					var img8=document.getElementById("img8");
+					ctx.drawImage(img8,adder(flip,7),0);
+					var img9=document.getElementById("img9");
+					ctx.drawImage(img9,adder(flip,8),0);	
+					var img10=document.getElementById("img10");
+					ctx.drawImage(img10,adder(flip,9),0);	
+					if(result.Name == "up"){
+						if(adder(flip,0) == 0){
+							var myImageData = ctx.createImageData(img1);
+							ctx.putImageData(myImageData, 0, 0);
+						}
+					}
+					if(result.Name == "zig-blur" || result.Name == "horiz-back" || result.Name == "diag-back" || result.Name == "horiz-front" || result.Name == "diag-front"){
+						console.log("Help!");
+						 Filters = {};
+						 Filters.getPixels = function(img) {
+  							return ctx.getImageData(0,0,c.width,c.height);
+						};
+						Filters.getCanvas = function(w,h) {
+  							var c = document.createElement('canvas');
+  							c.width = w;
+  							c.height = h;
+  							return c;
+						};
+						Filters.filterImage = function(filter, image, var_args) {
+  							var args = [this.getPixels(image)];
+  							for (var i=2; i<arguments.length; i++) {
+    						args.push(arguments[i]);
+  							}
+  							return filter.apply(null, args);
+						};
+						Filters.grayscale = function(pixels, args) {
+  							var d = pixels.data;
+  							for (var i=0; i<d.length; i+=4) {
+    							var r = d[i];
+    							var g = d[i+1];
+    							var b = d[i+2];
+    							// CIE luminance for the RGB
+    							// The human eye is bad at seeing red and blue, so we de-emphasize them.
+    							var v = 0.2126*r + 0.7152*g + 0.0722*b;
+    							d[i] = d[i+1] = d[i+2] = v
+  							}
+  							return pixels;
+						};
+					}																														
+				}
+				else // fewer than 10 points were inputted
+				{
+					var c=document.getElementById("myCanvas");
+					var ctx=c.getContext("2d");
+					var img1=document.getElementById("img1");
+					ctx.drawImage(img1,adder(flip,0),0);
+					var img2=document.getElementById("img2");
+					ctx.drawImage(img2,adder(flip,1),0);
+					var img3=document.getElementById("img3");
+					ctx.drawImage(img3,adder(flip,2),0);	
+					var img4=document.getElementById("img4");
+					ctx.drawImage(img4,adder(flip,3),0);	
+					var img5=document.getElementById("img5");
+					ctx.drawImage(img5,adder(flip,4),0);
+					var img6=document.getElementById("img6");
+					ctx.drawImage(img6,adder(flip,5),0);
+					var img7=document.getElementById("img7");
+					ctx.drawImage(img7,adder(flip,6),0);
+					var img8=document.getElementById("img8");
+					ctx.drawImage(img8,adder(flip,7),0);
+					var img9=document.getElementById("img9");
+					ctx.drawImage(img9,adder(flip,8),0);	
+					var img10=document.getElementById("img10");
+					ctx.drawImage(img10,adder(flip,9),0);
+				}
+			}
+		}
+		function adder(x, pos){
+			var temp = x + (pos*500);
+			temp = temp%5000;	
+			return temp;
+		}
+		function drawText(str)
+		{
+			_g.fillStyle = "rgb(255,255,136)";
+			_g.fillRect(0, 0, _rc.width, 20);
+			_g.fillStyle = "rgb(0,0,255)";
+			_g.fillText(str, 1, 14);
+		}
+		function drawConnectedPoint(from, to)
+		{
+			_g.beginPath();
+			_g.moveTo(_points[from].X, _points[from].Y);
+			_g.lineTo(_points[to].X, _points[to].Y);
+			_g.closePath();
+			_g.stroke();
+		}
+		function round(n, d) // round 'n' to 'd' decimals
+		{
+			d = Math.pow(10, d);
+			return Math.round(n * d) / d
+		}
+		//
+		// Unistroke Adding and Clearing
+		//
+		function onClickAddExisting()
+		{
+			if (_points.length >= 10)
+			{
+				var unistrokes = document.getElementById('unistrokes');
+				var name = unistrokes[unistrokes.selectedIndex].value;
+				var num = _r.AddGesture(name, _points);
+				drawText("\"" + name + "\" added. Number of \"" + name + "\"s defined: " + num + ".");
+			}
+		}
+		function onClickAddCustom()
+		{
+			var name = document.getElementById('custom').value;
+			if (_points.length >= 10 && name.length > 0)
+			{
+				var num = _r.AddGesture(name, _points);
+				drawText("\"" + name + "\" added. Number of \"" + name + "\"s defined: " + num + ".");
+				//drawText(_points);
+				//console.log(_points)
+			}
+		}
+		function onClickCustom()
+		{
+			document.getElementById('custom').select();
+		}
+		function onClickDelete()
+		{
+			var num = _r.DeleteUserGestures(); // deletes any user-defined unistrokes
+			alert("All user-defined gestures have been deleted. Only the 1 predefined gesture remains for each of the " + num + " types.");
+		}
+	// -->
+	</script>
+</head>
+<body onload="onLoadEvent()">
+<script>
+
+
+
+</script>	
+	<div id="Content">
+	<p>Swipe screen to initialize images </p>
+
+		<div id="hidden" style="display: none;">
+			<img id="img1" src="img/img1.jpg" alt="img1" width="400" height="400">
+			<img id="img2" src="img/img2.jpg" alt="img2" width="400" height="400">
+			<img id="img3" src="img/img3.jpg" alt="img3" width="400" height="400">
+			<img id="img4" src="img/img4.jpg" alt="img4" width="400" height="400">
+			<img id="img5" src="img/img5.jpg" alt="img5" width="400" height="400">
+			<img id="img6" src="img/img6.jpg" alt="img6" width="400" height="400">
+			<img id="img7" src="img/img7.jpg" alt="img7" width="400" height="400">
+			<img id="img8" src="img/img8.jpg" alt="img8" width="400" height="400">
+			<img id="img9" src="img/img9.jpg" alt="img9" width="400" height="400">
+			<img id="img10" src="img/img10.jpg" alt="img10" width="400" height="400">
+		</div>
+			<!-- Gesture image and canvas -->
+			<table border="0" cellspacing="10" align= "center">
+				<tr>
+					<td valign="top" style="display: none;">
+						<img src="unistrokes.gif"><br/>
+						<p>
+							<form style="font-size:10pt">
+								<input type="radio" name="search" id="useProtractor">
+									<span style="font-weight:bold">Use Protractor <i>(faster)</i></span>
+								</input>
+							</form>
+						</p>
+					</td>
+					<td valign="top" align="right">
+						<canvas id="myCanvas" width="800" height="400" style="background-color:#dddddd"
+								onmousedown="mouseDownEvent(event.clientX, event.clientY)"
+								onmousemove="mouseMoveEvent(event.clientX, event.clientY)"
+								onmouseup="mouseUpEvent(event.clientX, event.clientY)"
+								oncontextmenu="return false;">
+							<span style="background-color:#ffff88;">The &lt;canvas&gt; element is not supported by this browser.</span>
+						</canvas>
+						<a href="help.html">Help and Documentation</a>
+						<!-- Editing area below stroking canvas area -->
+						<table border="0" width="420" style="display: none;">
+							<tr>
+								<td valign="top" align="left">Add as example of existing type:</td>
+								<td valign="top" align="right">
+									<select id="unistrokes" style="width:136px" onkeypress="if (event.keyCode == 13) onClickAddExisting()">
+										<option selected value="triangle">triangle</option>
+										<option value="x">x</option>
+										<option value="rectangle">rectangle</option>
+										<option value="circle">circle</option>
+										<option value="check">check</option>
+										<option value="caret">caret</option>
+										<option value="zig-zag">zig-zag</option>
+										<option value="arrow">arrow</option>
+										<option value="left square bracket">left square bracket</option>
+										<option value="right square bracket">right square bracket</option>
+										<option value="v">v</option>
+										<option value="delete">delete</option>
+										<option value="left curly brace">left curly brace</option>
+										<option value="right curly brace">right curly brace</option>
+										<option value="star">star</option>
+										<option value="pigtail">pigtail</option>
+									</select>
+								</td>
+								<td valign="top" align="right"><input type="button" style="width:64px" value="  Add   " onclick="onClickAddExisting()" /></td>
+							</tr>
+							<tr>
+								<td valign="top" align="left">Add as example of custom type:</td>
+								<td valign="top" align="right"><input type="text" id="custom" style="width:130px" value="Type name here..." onclick="onClickCustom()" onkeypress="if (event.keyCode == 13) onClickAddCustom()" /></td>
+								<td valign="top" align="right"><input type="button" style="width:64px" value="  Add   " onclick="onClickAddCustom()" /></td>
+							</tr>
+							<tr>
+								<td valign="top" align="left">Delete all user-defined gestures:</td>
+								<td valign="top" align="right">&nbsp;</td>
+								<td valign="top" align="right"><input type="button" style="width:64px" value="Delete" onclick="onClickDelete()" /></td>
+							</tr>
+						</table>
+						<!-- End of editing area below stroking canvas area -->
+					</td>
+				</tr>
+			</table>
+		</p>
+		<br/>
+		<p style="font-size:8pt;text-align:center">Copyright &copy; 2012 Tikue C. Anazodo</p>
+		<br/>
+	</div>
+	</body>
+</html>
